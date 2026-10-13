@@ -1,0 +1,20 @@
+
+# Python 가상환경
+.venv/
+.venv-1/
+venv/
+
+# Python 임시 파일
+__pycache__/
+*.pyc
+
+# VS Code 개인 설정
+.vscode/
+
+# 운영체제 임시 파일
+.DS_Store
+Thumbs.db
+
+# 환경 변수 및 비밀 정보
+.env
+.env.*

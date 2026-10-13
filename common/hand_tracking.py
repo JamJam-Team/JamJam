@@ -1,0 +1,65 @@
+
+import cv2
+import mediapipe as mp
+from pathlib import Path
+
+
+class HandTracker:
+    def __init__(self):
+        # 손 인식 모델 파일 경로
+        model_path = (
+            Path(__file__).resolve().parent.parent
+            / "models"
+            / "hand_landmarker.task"
+        )
+
+        # MediaPipe 손 인식 설정
+        options = mp.tasks.vision.HandLandmarkerOptions(
+            base_options=mp.tasks.BaseOptions(
+                model_asset_buffer=model_path.read_bytes()
+            ),
+            running_mode=mp.tasks.vision.RunningMode.IMAGE,
+            num_hands=2
+        )
+
+        # 손 인식 모델 생성
+        self.detector = (
+            mp.tasks.vision.HandLandmarker.create_from_options(options)
+        )
+
+    def process(self, frame):
+        # OpenCV BGR -> RGB 변환
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # MediaPipe 이미지 변환
+        image = mp.Image(
+            image_format=mp.ImageFormat.SRGB,
+            data=rgb
+        )
+
+        # 손 인식 실행
+        result = self.detector.detect(image)
+
+        height, width = frame.shape[:2]
+
+        # 인식된 손의 관절 표시
+        for hand in result.hand_landmarks:
+            for landmark in hand:
+                x = int(landmark.x * width)
+                y = int(landmark.y * height)
+
+                # 관절 위치: 초록색 점
+                cv2.circle(frame, (x, y), 4, (0, 255, 0), -1)
+
+            # 검지 손가락 끝 (8번 랜드마크)
+            tip = hand[8]
+            x = int(tip.x * width)
+            y = int(tip.y * height)
+
+            # 검지 끝: 빨간색 점
+            cv2.circle(frame, (x, y), 10, (0, 0, 255), -1)
+
+        return frame, result.hand_landmarks
+
+    def close(self):
+        self.detector.close()
