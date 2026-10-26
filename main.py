@@ -365,7 +365,7 @@ try:
 
         display_frame = cv2.resize(
             frame,
-            (1280, 960)
+            (960, 720)
         )
 
         cv2.imshow("JamJam", display_frame)
