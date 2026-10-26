@@ -120,7 +120,7 @@ source .venv/bin/activate
 ### 4. Install Dependencies
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install mediapipe opencv-python pygame numpy
 ```
 
 ### 5. Run
