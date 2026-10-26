@@ -7,6 +7,7 @@ from common.audio import AudioPlayer
 from common.lighting import LightingCorrector
 from common.finger_count import FingerCounter
 from common.instrument_selector import InstrumentSelector
+from instruments.drum import Drum
 
 
 # =====================================
@@ -22,9 +23,11 @@ gestures = {
 
 finger_counter = FingerCounter()
 selector = InstrumentSelector()
-
+drum = Drum()
 audio = AudioPlayer()
 audio.load_sound("test", "sounds/test.wav")
+drum.load_sounds(audio)
+
 
 lighting = LightingCorrector()
 lighting_enabled = True
@@ -72,7 +75,7 @@ try:
         else:
             processed_frame = frame.copy()
 
-        # 손 인식
+        # MediaPipe 손 인식
         frame, hands, handedness = tracker.process(processed_frame)
 
 
@@ -115,7 +118,6 @@ try:
             if hands:
 
                 finger_count = finger_counter.count(hands[0])
-
                 selected = selector.update(finger_count)
 
                 cv2.putText(
@@ -151,11 +153,11 @@ try:
             cv2.putText(
                 frame,
                 selected_instrument,
-                (180, 45),
+                (20, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                0.65,
                 (0, 255, 255),
-                2
+                1
             )
 
             # ---------------------------------
@@ -164,85 +166,159 @@ try:
 
             if selected_instrument == "COMMON DEMO":
 
-                if hands:
+                detected_hands = set()
 
-                    detected_hands = set()
+                for hand, hand_info in zip(hands, handedness):
 
-                    for hand, hand_info in zip(hands, handedness):
+                    # 왼손 / 오른손 구분
+                    hand_label = hand_info[0].category_name
 
-                        # 왼손 / 오른손 구분
-                        hand_label = hand_info[0].category_name
+                    # 좌우 반전 보정
+                    if hand_label == "Left":
+                        hand_label = "Right"
+                    else:
+                        hand_label = "Left"
 
-                        # 좌우 반전 보정
-                        if hand_label == "Left":
-                            hand_label = "Right"
-                        else:
-                            hand_label = "Left"
+                    detected_hands.add(hand_label)
 
-                        detected_hands.add(hand_label)
+                    # 손동작 인식
+                    state, play = gestures[hand_label].update(hand)
 
-                        # 손동작 인식
-                        state, play = gestures[hand_label].update(hand)
+                    # 펼친 손가락 개수
+                    finger_count = finger_counter.count(hand)
 
-                        # 펼친 손가락 개수
-                        finger_count = finger_counter.count(hand)
+                    # 손가락 개수 표시
+                    text_y = 110 if hand_label == "Left" else 150
 
-                        # 손가락 개수 표시
-                        text_y = 110 if hand_label == "Left" else 150
+                    cv2.putText(
+                        frame,
+                        f"{hand_label} Fingers: {finger_count}",
+                        (20, text_y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,
+                        (0, 255, 255),
+                        2
+                    )
+
+                    # 손동작 상태 표시
+                    y_position = 40 if hand_label == "Left" else 120
+
+                    cv2.putText(
+                        frame,
+                        f"{hand_label}: {state}",
+                        (20, y_position),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 255, 0),
+                        2
+                    )
+
+                    # FIST -> OPEN이면 테스트 소리 재생
+                    if play:
+
+                        print(f"{hand_label} PLAY!")
+
+                        audio.play("test")
 
                         cv2.putText(
                             frame,
-                            f"{hand_label} Fingers: {finger_count}",
-                            (20, text_y),
+                            f"{hand_label} PLAY!",
+                            (180, 240),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            0.8,
-                            (0, 255, 255),
-                            2
+                            1.5,
+                            (0, 0, 255),
+                            3
                         )
 
-                        # 손동작 상태 표시
-                        y_position = 40 if hand_label == "Left" else 120
-
-                        cv2.putText(
-                            frame,
-                            f"{hand_label}: {state}",
-                            (20, y_position),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
-                            (0, 255, 0),
-                            2
-                        )
-
-                        # FIST -> OPEN이면 소리 재생
-                        if play:
-
-                            print(f"{hand_label} PLAY!")
-
-                            audio.play("test")
-
-                            cv2.putText(
-                                frame,
-                                f"{hand_label} PLAY!",
-                                (180, 240),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                1.5,
-                                (0, 0, 255),
-                                3
-                            )
-
-                    # 인식되지 않은 손 초기화
-                    for hand_label in gestures:
-                        if hand_label not in detected_hands:
-                            gestures[hand_label].reset()
-
-                else:
-                    # 손이 모두 사라진 경우
-                    for detector in gestures.values():
-                        detector.reset()
+                # 화면에서 사라진 손 상태 초기화
+                for hand_label in gestures:
+                    if hand_label not in detected_hands:
+                        gestures[hand_label].reset()
 
 
             # ---------------------------------
-            # 5-2. 악기별 화면 (추후 구현)
+            # 5-2. 드럼
+            # ---------------------------------
+
+            elif selected_instrument == "DRUM":
+
+                # 위쪽 4칸, 아래쪽 3칸 표시
+                frame = drum.draw_grid(frame)
+
+                detected_hands = set()
+
+                for hand, hand_info in zip(hands, handedness):
+
+                    # 왼손 / 오른손 구분
+                    hand_label = hand_info[0].category_name
+
+                    # 좌우 반전 보정
+                    if hand_label == "Left":
+                        hand_label = "Right"
+                    else:
+                        hand_label = "Left"
+
+                    detected_hands.add(hand_label)
+
+                    # 손바닥 중심 좌표 (0~1)
+                    x, y = tracker.get_palm_center(hand)
+
+                    # 현재 손이 위치한 격자 번호
+                    grid_number = drum.get_grid(x, y)
+
+                    # 주먹 / 펼친 손 인식
+                    state, play = gestures[hand_label].update(hand)
+
+                    # 손바닥 중심 픽셀 좌표
+                    height, width = frame.shape[:2]
+                    center_x = int(x * width)
+                    center_y = int(y * height)
+
+                    # 손바닥 중심에 빨간 원 표시
+                    cv2.circle(
+                        frame,
+                        (center_x, center_y),
+                        12,
+                        (0, 0, 255),
+                        -1
+                    )
+
+                    # 격자 번호와 손동작 상태 표시
+                    cv2.putText(
+                        frame,
+                        f"GRID {grid_number} {state}",
+                        (center_x + 15, center_y - 15),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (0, 255, 255),
+                        2
+                    )
+
+                    # FIST -> OPEN이면 해당 격자 타격
+                    if play:
+                        # 타격한 격자와 시간 기록
+                        drum.register_hit(grid_number)
+
+                        # 드럼 클래스에 소리 재생 요청
+                        drum.play_sound(audio, grid_number)
+
+                        print(
+                            f"{hand_label} DRUM "
+                            f"{grid_number} HIT!"
+                        )
+
+
+                # 화면에서 사라진 손 상태 초기화
+                for hand_label in gestures:
+                    if hand_label not in detected_hands:
+                        gestures[hand_label].reset()
+
+                # 타격한 격자를 0.3초 동안 초록색으로 표시
+                frame = drum.draw_hit_effect(frame)
+
+
+            # ---------------------------------
+            # 5-3. 다른 악기 (추후 구현)
             # ---------------------------------
 
             else:
@@ -270,11 +346,11 @@ try:
         cv2.putText(
             frame,
             lighting_status,
-            (20, 80),
+            (20, 60),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1,
+            0.55,
             (255, 255, 255),
-            2
+            1
         )
 
 
