@@ -7,7 +7,7 @@
 **JamJam**은 노트북 웹캠을 통해 사용자의 손 위치와 움직임을 인식하여  
 실제 악기 없이 **드럼, 피아노, 기타, 베이스를 연주할 수 있는 가상 밴드 프로젝트**입니다.
 
-손의 2D 위치뿐만 아니라 카메라 방향으로 손을 움직이는 **깊이 모션(Z축 움직임)**을 감지하여 타격을 판정합니다.
+손의 2D 위치뿐만 아니라 **제스처 변화을 감지**합니다.
 
 최종 연주 곡은 **아이유 - 너의 의미**이며, 악기별 특성에 맞는 연주 인터페이스를 구현하는 것을 목표로 합니다.
 
@@ -15,9 +15,9 @@
 
 - 웹캠을 이용한 실시간 영상 입력
 - 손 및 손가락 위치 인식
-- 손을 앞으로 찌르는 Z축 타격 감지
 - 저조도 환경을 위한 조명 보정
 - 손동작에 따른 악기 음원 재생
+- 주먹을 쥐고 이동한 뒤 손을 펴서 연주
 - 드럼 · 피아노 · 기타 · 베이스 연주
 
 
@@ -39,38 +39,31 @@
 
 ```text
 JamJam/
-│
-├── main.py
-│
-├── requirements.txt
-│
-├── README.md
-│
-├── .gitignore
-│
-├── common/                  # 공통 기능
-│   ├── camera.py            # 웹캠 입력
-│   ├── hand_tracking.py     # 손 인식
-│   ├── depth_detection.py   # Z축 타격 감지
-│   ├── lighting.py          # 조명 보정
-│   └── audio.py             # 음원 재생
-│
-├── instruments/             # 악기별 기능
+├── common/
+│   ├── __init__.py
+│   ├── hand_tracking.py
+│   ├── gesture_detection.py
+│   ├── audio.py
+│   └── lighting.py
+├── instruments/        # 악기별 기능
+│   ├── bass.py
 │   ├── drum.py
 │   ├── piano.py
-│   ├── bass.py
 │   └── guitar.py
-│
-└── sounds/                  # 악기별 음원
-    ├── drum/
-    ├── piano/
-    ├── bass/
-    └── guitar/
+├── models/
+│   └── hand_landmarker.task
+├── sounds/             # 악기별 음원
+│   ├── bass/
+│   ├── drum/
+│   ├── piano/
+│   └── guitar/
+├── main.py
+└── .gitignore
 ```
 
 ### 공통 기능
 
-웹캠, 손 인식, Z축 감지, 조명 보정, 음원 재생과 같이  
+웹캠, 손 인식, 조명 보정, 음원 재생과 같이  
 모든 악기에서 사용하는 기능은 `common/`에서 관리합니다.
 
 ### 악기별 기능
