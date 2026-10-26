@@ -50,16 +50,35 @@ class HandTracker:
 
                 # 관절 위치: 초록색 점
                 cv2.circle(frame, (x, y), 4, (0, 255, 0), -1)
+                
 
-            # 검지 손가락 끝 (8번 랜드마크)
-            tip = hand[8]
-            x = int(tip.x * width)
-            y = int(tip.y * height)
+            
+            # 손바닥 중심 좌표 가져오기
+            palm_x, palm_y = self.get_palm_center(hand)
 
-            # 검지 끝: 빨간색 점
+            # 영상 좌표로 변환
+            x = int(palm_x * width)
+            y = int(palm_y * height)
+
+            # 손바닥 중심: 빨간색 점
             cv2.circle(frame, (x, y), 10, (0, 0, 255), -1)
 
-        return frame, result.hand_landmarks
+            
+        return frame, result.hand_landmarks, result.handedness
+
+
+
+    
+    def get_palm_center(self, hand):
+        # 손바닥 중심 계산에 사용할 관절 번호
+        palm_points = [0, 5, 9, 13, 17]
+
+        # 정규화된 손바닥 중심 좌표 계산
+        palm_x = sum(hand[i].x for i in palm_points) / len(palm_points)
+        palm_y = sum(hand[i].y for i in palm_points) / len(palm_points)
+
+        return palm_x, palm_y
+
 
     def close(self):
         self.detector.close()
