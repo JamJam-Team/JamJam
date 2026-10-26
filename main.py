@@ -8,7 +8,11 @@ from common.lighting import LightingCorrector
 
 # 손 인식 및 손동작 인식 객체 생성
 tracker = HandTracker()
-gesture = GestureDetector()
+# 왼손과 오른손의 손동작을 독립적으로 관리
+gestures = {
+    "Left": GestureDetector(),
+    "Right": GestureDetector()
+}
 #소리 재생
 audio = AudioPlayer()
 audio.load_sound("test", "sounds/test.wav")
@@ -45,41 +49,66 @@ try:
             processed_frame = frame.copy()
 
         # 선택된 영상으로 손 인식
-        frame, hands = tracker.process(processed_frame)
+        
+        frame, hands, handedness = tracker.process(processed_frame)
 
 
+
+        
         if hands:
-            # 우선 첫 번째 손으로 동작 테스트
-            state, play = gesture.update(hands[0])
+            detected_hands = set()
 
-            raw_state = gesture.classify(hands[0])
-            print(f"실제 인식: {raw_state} / 화면 상태: {state}")
+            for hand, hand_info in zip(hands, handedness):
+                # 왼손 / 오른손 구분
+                hand_label = hand_info[0].category_name
+                # 실제 손과 표시가 반대이므로 좌우 교환
+                if hand_label == "Left":
+                    hand_label = "Right"
+                else:
+                    hand_label = "Left"
 
-            cv2.putText(
-                frame,
-                f"Gesture: {state}",
-                (20, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 0),
-                2
-            )
+                detected_hands.add(hand_label)
 
-            if play:
-                print("PLAY! - 손을 펼쳤습니다.")
-                audio.play("test")
+                # 각 손의 동작을 독립적으로 인식
+                state, play = gestures[hand_label].update(hand)
+
+                # 화면에 손동작 상태 표시
+                y_position = 40 if hand_label == "Left" else 120
 
                 cv2.putText(
                     frame,
-                    "PLAY!",
-                    (220, 240),
+                    f"{hand_label}: {state}",
+                    (20, y_position),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    2,
-                    (0, 0, 255),
-                    4
+                    1,
+                    (0, 255, 0),
+                    2
                 )
+
+                if play:
+                    print(f"{hand_label} PLAY!")
+                    audio.play("test")
+
+                    cv2.putText(
+                        frame,
+                        f"{hand_label} PLAY!",
+                        (180, 240),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1.5,
+                        (0, 0, 255),
+                        3
+                    )
+
+            # 화면에서 사라진 손의 상태 초기화
+            for hand_label in gestures:
+                if hand_label not in detected_hands:
+                    gestures[hand_label].reset()
+
         else:
-            gesture.reset()
+            # 양손 모두 인식되지 않으면 초기화
+            for gesture_detector in gestures.values():
+                gesture_detector.reset()
+
 
         
         
@@ -99,8 +128,11 @@ try:
             2
         )
 
-        # 웹캠 화면 하나만 출력
-        cv2.imshow("JamJam", frame)
+        # 웹캠 화면을 크게 출력
+        display_frame = cv2.resize(frame, (1280, 960))
+
+        cv2.imshow("JamJam", display_frame)
+
 
 
 
