@@ -88,7 +88,7 @@ try:
             cv2.putText(
                 frame,
                 "SELECT INSTRUMENT",
-                (120, 45),
+                (300, 45),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
                 (0, 255, 255),
@@ -150,6 +150,10 @@ try:
 
         else:
 
+            # ---------------------------------
+            # 상단 중앙: 현재 선택된 악기
+            # ---------------------------------
+
             cv2.putText(
                 frame,
                 selected_instrument,
@@ -159,6 +163,7 @@ try:
                 (0, 255, 255),
                 1
             )
+
 
             # ---------------------------------
             # 5-1. 공통 기능 시연 모드
@@ -326,9 +331,9 @@ try:
                 cv2.putText(
                     frame,
                     "Instrument screen - Coming soon",
-                    (80, 240),
+                    (120, 240),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
+                    0.7,
                     (255, 255, 255),
                     2
                 )
