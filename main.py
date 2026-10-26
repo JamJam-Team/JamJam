@@ -85,7 +85,7 @@ try:
             cv2.putText(
                 frame,
                 "SELECT INSTRUMENT",
-                (120, 45),
+                (300, 45),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
                 (0, 255, 255),
@@ -148,15 +148,29 @@ try:
 
         else:
 
+            # ---------------------------------
+            # 상단 중앙: 현재 선택된 악기
+            # ---------------------------------
+
+            title = selected_instrument
+
+            (title_width, _), _ = cv2.getTextSize(
+                title,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.9,
+                2
+            )
+
             cv2.putText(
                 frame,
-                selected_instrument,
-                (180, 45),
+                title,
+                ((640 - title_width) // 2, 35),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                0.9,
                 (0, 255, 255),
                 2
             )
+
 
             # ---------------------------------
             # 5-1. 공통 기능 시연 모드
@@ -184,51 +198,117 @@ try:
                         # 손동작 인식
                         state, play = gestures[hand_label].update(hand)
 
-                        # 펼친 손가락 개수
+                        # 손가락 개수
                         finger_count = finger_counter.count(hand)
 
-                        # 손가락 개수 표시
-                        text_y = 110 if hand_label == "Left" else 150
 
-                        cv2.putText(
-                            frame,
-                            f"{hand_label} Fingers: {finger_count}",
-                            (20, text_y),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.8,
-                            (0, 255, 255),
-                            2
-                        )
+                        # =====================================
+                        # 왼손 정보
+                        # =====================================
 
-                        # 손동작 상태 표시
-                        y_position = 40 if hand_label == "Left" else 120
+                        if hand_label == "Left":
 
-                        cv2.putText(
-                            frame,
-                            f"{hand_label}: {state}",
-                            (20, y_position),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
-                            (0, 255, 0),
-                            2
-                        )
+                            text_x = 20
 
-                        # FIST -> OPEN이면 소리 재생
+                            cv2.putText(
+                                frame,
+                                "LEFT HAND",
+                                (text_x, 100),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.65,
+                                (255, 255, 255),
+                                2
+                            )
+
+                            cv2.putText(
+                                frame,
+                                f"State: {state}",
+                                (text_x, 130),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.65,
+                                (0, 255, 0),
+                                2
+                            )
+
+                            cv2.putText(
+                                frame,
+                                f"Fingers: {finger_count}",
+                                (text_x, 160),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.65,
+                                (0, 255, 255),
+                                2
+                            )
+
+
+                        # =====================================
+                        # 오른손 정보
+                        # =====================================
+
+                        else:
+
+                            text_x = 440
+
+                            cv2.putText(
+                                frame,
+                                "RIGHT HAND",
+                                (text_x, 100),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.65,
+                                (255, 255, 255),
+                                2
+                            )
+
+                            cv2.putText(
+                                frame,
+                                f"State: {state}",
+                                (text_x, 130),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.65,
+                                (0, 255, 0),
+                                2
+                            )
+
+                            cv2.putText(
+                                frame,
+                                f"Fingers: {finger_count}",
+                                (text_x, 160),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.65,
+                                (0, 255, 255),
+                                2
+                            )
+
+
+                        # =====================================
+                        # PLAY 이벤트
+                        # =====================================
+
                         if play:
 
                             print(f"{hand_label} PLAY!")
 
                             audio.play("test")
 
+                            play_text = f"{hand_label} PLAY!"
+
+                            (play_width, _), _ = cv2.getTextSize(
+                                play_text,
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                1.2,
+                                3
+                            )
+
                             cv2.putText(
                                 frame,
-                                f"{hand_label} PLAY!",
-                                (180, 240),
+                                play_text,
+                                ((640 - play_width) // 2, 260),
                                 cv2.FONT_HERSHEY_SIMPLEX,
-                                1.5,
+                                1.2,
                                 (0, 0, 255),
                                 3
                             )
+
 
                     # 인식되지 않은 손 초기화
                     for hand_label in gestures:
@@ -236,13 +316,13 @@ try:
                             gestures[hand_label].reset()
 
                 else:
-                    # 손이 모두 사라진 경우
+
                     for detector in gestures.values():
                         detector.reset()
 
 
             # ---------------------------------
-            # 5-2. 악기별 화면 (추후 구현)
+            # 5-2. 악기별 화면
             # ---------------------------------
 
             else:
@@ -250,9 +330,9 @@ try:
                 cv2.putText(
                     frame,
                     "Instrument screen - Coming soon",
-                    (80, 240),
+                    (120, 240),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
+                    0.7,
                     (255, 255, 255),
                     2
                 )
@@ -270,9 +350,9 @@ try:
         cv2.putText(
             frame,
             lighting_status,
-            (20, 80),
+            (20, 35),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1,
+            0.65,
             (255, 255, 255),
             2
         )
