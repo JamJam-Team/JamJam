@@ -8,6 +8,7 @@ from common.finger_count import FingerCounter
 from common.instrument_selector import InstrumentSelector
 from instruments.drum import Drum
 from instruments.piano import Piano
+from instruments.bass import Bass
 
 # =====================================
 # 1. 공통 기능 객체 생성
@@ -35,6 +36,10 @@ drum.load_sounds(audio)
 # 피아노
 piano = Piano()
 piano.load_sounds(audio)
+
+# 베이스
+bass = Bass()
+bass.load_sounds(audio)
 
 # None이면 악기 선택 화면
 selected_instrument = None
@@ -386,6 +391,81 @@ try:
 
                 # 연주 효과 표시
                 frame = piano.draw_hit_effect(frame)
+
+            # ---------------------------------
+            # 5-4. 베이스 (왼손 프렛 3칸 + 오른손 주법 5칸)
+            # ---------------------------------
+            elif selected_instrument == "BASS":
+
+                # 베이스 화면 격자 표시
+                frame = bass.draw_grid(frame)
+
+                detected_hands = set()
+
+                for hand, hand_info in zip(hands, handedness):
+
+                    # 좌우 반전 보정
+                    hand_label = hand_info[0].category_name
+                    hand_label = "Right" if hand_label == "Left" else "Left"
+                    detected_hands.add(hand_label)
+
+                    # 손바닥 중심 좌표 (0~1)
+                    x, y = tracker.get_palm_center(hand)
+                    height, width = frame.shape[:2]
+                    center_x = int(x * width)
+                    center_y = int(y * height)
+
+                    # 주먹 -> 펼친 손 동작 감지
+                    state, play = gestures[hand_label].update(hand)
+
+                    # 1. 왼손: 프렛(Fret 1, 3, 5) 선택
+                    if hand_label == "Left":
+                        fret_idx = bass.update_fret(y)
+
+                        # 시각화 (파란 점)
+                        cv2.circle(frame, (center_x, center_y), 12, (255, 0, 0), -1)
+                        cv2.putText(
+                            frame,
+                            f"{bass.fret_names[fret_idx]}",
+                            (center_x + 15, center_y - 15),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            (255, 200, 0),
+                            2
+                        )
+
+                    # 2. 오른손: 주법(Finger, Slap, Pop, Pick, Mute) 타격
+                    elif hand_label == "Right":
+                        tech_idx = bass.get_tech_grid(y)
+
+                        # 시각화 (빨간 점)
+                        cv2.circle(frame, (center_x, center_y), 12, (0, 0, 255), -1)
+                        cv2.putText(
+                            frame,
+                            f"{bass.tech_names[tech_idx]} {state}",
+                            (center_x + 15, center_y - 15),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            (0, 255, 255),
+                            2
+                        )
+
+                        # 오른손 FIST -> OPEN 트리거 시 사운드 재생
+                        if play:
+                            bass.register_hit(tech_idx)
+                            bass.play_sound(audio, tech_idx)
+                            print(
+                                f"[BASS] {bass.fret_names[bass.current_fret]} + "
+                                f"{bass.tech_names[tech_idx]} PLAY!"
+                            )
+
+                # 화면에서 사라진 손 상태 초기화
+                for hand_label in gestures:
+                    if hand_label not in detected_hands:
+                        gestures[hand_label].reset()
+
+                # 타격 이펙트 표시
+                frame = bass.draw_hit_effect(frame)
 
             # ---------------------------------
             # 5-3. 다른 악기 (추후 구현)
