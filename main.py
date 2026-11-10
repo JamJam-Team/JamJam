@@ -1,4 +1,3 @@
-
 import cv2
 
 from common.hand_tracking import HandTracker
@@ -8,7 +7,7 @@ from common.lighting import LightingCorrector
 from common.finger_count import FingerCounter
 from common.instrument_selector import InstrumentSelector
 from instruments.drum import Drum
-
+from instruments.piano import Piano
 
 # =====================================
 # 1. 공통 기능 객체 생성
@@ -23,14 +22,19 @@ gestures = {
 
 finger_counter = FingerCounter()
 selector = InstrumentSelector()
-drum = Drum()
-audio = AudioPlayer()
-audio.load_sound("test", "sounds/test.wav")
-drum.load_sounds(audio)
-
-
 lighting = LightingCorrector()
 lighting_enabled = True
+
+audio = AudioPlayer()
+audio.load_sound("test", "sounds/test.wav")
+
+# 드럼
+drum = Drum()
+drum.load_sounds(audio)
+
+# 피아노
+piano = Piano()
+piano.load_sounds(audio)
 
 # None이면 악기 선택 화면
 selected_instrument = None
@@ -321,6 +325,67 @@ try:
                 # 타격한 격자를 0.3초 동안 초록색으로 표시
                 frame = drum.draw_hit_effect(frame)
 
+
+            # ---------------------------------
+            # 5-3. 피아노
+            # ---------------------------------
+            elif selected_instrument == "PIANO":
+
+                # 피아노 5분할 화면
+                frame = piano.draw_grid(frame)
+
+                detected_hands = set()
+
+                for hand, hand_info in zip(hands, handedness):
+
+                    # 좌우 반전 보정
+                    hand_label = hand_info[0].category_name
+                    hand_label = (
+                        "Right" if hand_label == "Left"
+                        else "Left"
+                    )
+                    detected_hands.add(hand_label)
+
+                    # 손바닥 중심으로 격자 계산
+                    x, y = tracker.get_palm_center(hand)
+                    grid_number = piano.get_grid(x, y)
+
+                    # 주먹 -> 펼친 손 동작
+                    state, play = gestures[hand_label].update(hand)
+
+                    height, width = frame.shape[:2]
+                    center_x = int(x * width)
+                    center_y = int(y * height)
+
+                    cv2.circle(
+                        frame, (center_x, center_y),
+                        12, (0, 0, 255), -1
+                    )
+
+                    cv2.putText(
+                        frame,
+                        f"GRID {grid_number} {state}",
+                        (center_x + 15, center_y - 15),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6, (0, 255, 255), 2
+                    )
+
+                    if play and grid_number is not None:
+                        piano.register_hit(grid_number)
+                        piano.play_sound(audio, grid_number)
+
+                        print(
+                            f"{hand_label} PIANO "
+                            f"{piano.piano_names[grid_number - 1]} PLAY!"
+                        )
+
+                # 화면에서 사라진 손 상태 초기화
+                for hand_label in gestures:
+                    if hand_label not in detected_hands:
+                        gestures[hand_label].reset()
+
+                # 연주 효과 표시
+                frame = piano.draw_hit_effect(frame)
 
             # ---------------------------------
             # 5-3. 다른 악기 (추후 구현)
