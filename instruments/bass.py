@@ -15,7 +15,7 @@ class Bass:
         self.fret_h = self.height // 3
 
         # 오른손 주법 (세로 5등분)
-        self.tech_names = ["Finger", "Slap", "Pop", "Pick", "Mute"]
+        self.tech_names = ["Rhythm 1", "Rhythm 2", "Rhythm 3", "Rhythm 4", "Rhythm 5"]
         self.tech_h = self.height // 5
 
         # 상태 관리
@@ -30,7 +30,7 @@ class Bass:
         fallback_sound = "sounds/test.wav"
 
         frets = ["fret1", "fret3", "fret5"]
-        techs = ["finger", "slap", "pop", "pick", "mute"]
+        techs = ["rhythm1", "rhythm2", "rhythm3", "rhythm4", "rhythm5"]
 
         for f in frets:
             for t in techs:
@@ -63,7 +63,7 @@ class Bass:
     def play_sound(self, audio, tech_idx):
         """선택된 왼손 프렛과 오른손 주법 조합으로 재생"""
         frets = ["fret1", "fret3", "fret5"]
-        techs = ["finger", "slap", "pop", "pick", "mute"]
+        techs = ["rhythm1", "rhythm2", "rhythm3", "rhythm4", "rhythm5"]
 
         sound_key = f"{frets[self.current_fret]}_{techs[tech_idx]}"
         audio.play(sound_key)
