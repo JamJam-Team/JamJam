@@ -1,50 +1,52 @@
 
 import cv2
 import time
+import pygame
 
 
 class Drum:
     def __init__(self):
         self.grid_count = 7
 
-        # 드럼 격자별 악기 이름
+        # 드럼 격자별 패턴 이름
         self.drum_names = [
-            "CRASH",
-            "HIGH TOM",
-            "FLOOR TOM",
-            "RIDE",
-            "HI-HAT",
-            "KICK",
-            "SNARE"
+            "PATTERN 1",
+            "PATTERN 2",
+            "PATTERN 3",
+            "PATTERN 4",
+            "PATTERN 5",
+            "PATTERN 6",
+            "PATTERN 7"
         ]
 
-        # 드럼 격자별 음원 이름
+        # 격자별 음원 이름
         self.sound_names = [
-            "crash",
-            "high_tom",
-            "floor_tom",
-            "ride",
-            "hihat",
-            "kick",
-            "snare"
+            "pattern1",
+            "pattern2",
+            "pattern3",
+            "pattern4",
+            "pattern5",
+            "pattern6",
+            "pattern7"
         ]
 
-        # 악기별 색상 (OpenCV는 BGR 순서)
+        # 격자별 색상 (OpenCV BGR)
         self.colors = [
-            (0, 215, 255),    # CRASH - 노란색
-            (255, 160, 180),  # HIGH TOM - 보라색
-            (255, 120, 100),  # FLOOR TOM - 파란색
-            (255, 220, 80),   # RIDE - 하늘색
-            (120, 220, 80),   # HI-HAT - 초록색
-            (60, 160, 255),   # KICK - 주황색
-            (150, 100, 255)   # SNARE - 분홍색
+            (68, 68, 239),    
+            (246, 130, 59),  
+            (247, 85, 168),  
+            (22, 115, 249),  
+            (94, 197, 34),   
+            (53, 230, 163),   
+            (21, 204, 250)    
         ]
 
-        # 마지막으로 타격한 격자와 시간
+        # 타격 효과
         self.hit_times = {}
-
-        # 타격 효과 유지 시간 (초)
         self.flash_duration = 0.3
+
+        # 현재 재생 중인 드럼 패턴 채널
+        self.pattern_channel = None
 
     # =====================================
     # 격자 위치 계산
@@ -53,7 +55,6 @@ class Drum:
     def get_grid_rect(self, grid_number, width, height):
         half_height = height // 2
 
-        # 위쪽 4칸
         if grid_number <= 4:
             index = grid_number - 1
 
@@ -62,7 +63,6 @@ class Drum:
 
             y1, y2 = 0, half_height
 
-        # 아래쪽 3칸
         else:
             index = grid_number - 5
 
@@ -89,7 +89,7 @@ class Drum:
 
             color = self.colors[i]
 
-            # 반투명 색상 배경
+            # 반투명 배경
             overlay = frame.copy()
 
             cv2.rectangle(
@@ -106,7 +106,7 @@ class Drum:
                 0, frame
             )
 
-            # 악기별 색상 테두리
+            # 격자 테두리
             cv2.rectangle(
                 frame,
                 (x1 + 3, y1 + 3),
@@ -115,7 +115,7 @@ class Drum:
                 2
             )
 
-            # 악기 이름 표시
+            # 패턴 이름
             cv2.putText(
                 frame,
                 self.drum_names[i],
@@ -133,24 +133,19 @@ class Drum:
     # =====================================
 
     def get_grid(self, x, y):
-        # x, y는 0~1 사이의 정규화 좌표
-
-        # 위쪽 4칸
         if y < 0.5:
             grid = int(x * 4) + 1
-            return min(grid, 4)
+            return min(max(grid, 1), 4)
 
-        # 아래쪽 3칸
         else:
             grid = int(x * 3) + 5
-            return min(grid, 7)
+            return min(max(grid, 5), 7)
 
     # =====================================
     # 드럼 타격 기록
     # =====================================
 
     def register_hit(self, grid_number):
-        # 해당 격자가 타격된 시간 저장
         self.hit_times[grid_number] = time.monotonic()
 
     # =====================================
@@ -163,17 +158,14 @@ class Drum:
 
         for grid_number, hit_time in list(self.hit_times.items()):
 
-            # 0.3초가 지난 타격 효과 제거
             if current_time - hit_time > self.flash_duration:
                 del self.hit_times[grid_number]
                 continue
 
-            # 타격된 격자의 위치 계산
             x1, y1, x2, y2 = self.get_grid_rect(
                 grid_number, width, height
             )
 
-            # 반투명 하얀색 타격 효과
             overlay = frame.copy()
 
             cv2.rectangle(
@@ -193,26 +185,33 @@ class Drum:
         return frame
 
     # =====================================
-    # 드럼 음원 불러오기
+    # 드럼 패턴 음원 불러오기
     # =====================================
 
     def load_sounds(self, audio):
-        audio.load_sound("crash", "sounds/drum/crash.wav")
-        audio.load_sound("high_tom", "sounds/drum/high_tom.wav")
-        audio.load_sound("floor_tom", "sounds/drum/floor_tom.wav")
-        audio.load_sound("ride", "sounds/drum/ride.wav")
-        audio.load_sound("hihat", "sounds/drum/hihat.wav")
-        audio.load_sound("kick", "sounds/drum/kick.wav")
-        audio.load_sound("snare", "sounds/drum/snare.wav")
+        for i in range(self.grid_count):
+            sound_name = self.sound_names[i]
+            sound_path = f"sounds/drum/{sound_name}.wav"
 
-        # 하이햇 볼륨 0.7 유지
-        audio.sounds["hihat"].set_volume(0.7)
+            audio.load_sound(sound_name, sound_path)
+
+        # 드럼 패턴 전용 채널
+        self.pattern_channel = pygame.mixer.Channel(1)
 
     # =====================================
-    # 드럼 음원 재생
+    # 드럼 패턴 재생
     # =====================================
 
     def play_sound(self, audio, grid_number):
-        if 1 <= grid_number <= self.grid_count:
-            sound_name = self.sound_names[grid_number - 1]
-            audio.play(sound_name)
+        if not 1 <= grid_number <= self.grid_count:
+            return
+
+        sound_name = self.sound_names[grid_number - 1]
+
+        # 이전 패턴 중단
+        self.pattern_channel.stop()
+
+        # 새로운 패턴 재생
+        self.pattern_channel.play(
+            audio.sounds[sound_name]
+        )
