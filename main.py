@@ -8,6 +8,7 @@ from common.finger_count import FingerCounter
 from common.instrument_selector import InstrumentSelector
 from instruments.drum import Drum
 from instruments.piano import Piano
+from instruments.guitar import Guitar
 
 # =====================================
 # 1. 공통 기능 객체 생성
@@ -35,6 +36,9 @@ drum.load_sounds(audio)
 # 피아노
 piano = Piano()
 piano.load_sounds(audio)
+
+guitar = Guitar()
+guitar.load_sounds(audio)
 
 # None이면 악기 선택 화면
 selected_instrument = None
@@ -387,23 +391,116 @@ try:
                 # 연주 효과 표시
                 frame = piano.draw_hit_effect(frame)
 
+            
             # ---------------------------------
-            # 5-3. 다른 악기 (추후 구현)
+            # 5-4. 기타
             # ---------------------------------
+            
 
-            else:
+            # ---------------------------------
+            # 5-4. 기타
+            # ---------------------------------
+            elif selected_instrument == "GUITAR":
 
-                cv2.putText(
-                    frame,
-                    "Instrument screen - Coming soon",
-                    (120, 240),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (255, 255, 255),
-                    2
-                )
+                frame = guitar.draw_grid(frame)
 
+                detected_hands = set()
 
+                # 현재 선택된 코드와 연주 방법
+                selected_chord = None
+                selected_method = None
+
+                # 손을 펼쳐 연주 신호가 발생했는지 확인
+                play_requested = False
+
+                for hand, hand_info in zip(hands, handedness):
+
+                    # 왼손 / 오른손 구분
+                    hand_label = hand_info[0].category_name
+
+                    if hand_label == "Left":
+                        hand_label = "Right"
+                    else:
+                        hand_label = "Left"
+
+                    detected_hands.add(hand_label)
+
+                    # 손바닥 중심 좌표
+                    x, y = tracker.get_palm_center(hand)
+
+                    # 주먹 / 손 펴기 판별
+                    state, play = gestures[hand_label].update(hand)
+
+                    # 손 위치에 따라 코드 또는 연주 방법 선택
+                    if hand_label == "Left":
+                        selected_chord = guitar.get_chord(x, y)
+                    else:
+                        selected_method = guitar.get_method(x, y)
+
+                    # 손바닥 위치 표시
+                    height, width = frame.shape[:2]
+                    center_x = int(x * width)
+                    center_y = int(y * height)
+
+                    cv2.circle(
+                        frame,
+                        (center_x, center_y),
+                        12,
+                        (0, 0, 255),
+                        -1
+                    )
+
+                    # 현재 손의 선택 정보
+                    selected_text = (
+                        selected_chord
+                        if hand_label == "Left"
+                        else selected_method
+                    )
+
+                    cv2.putText(
+                        frame,
+                        f"{hand_label}: {selected_text} {state}",
+                        (center_x + 15, center_y - 15),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (0, 255, 255),
+                        2
+                    )
+
+                    if play:
+                        play_requested = True
+
+                # 화면에서 사라진 손 초기화
+                for hand_label in gestures:
+                    if hand_label not in detected_hands:
+                        gestures[hand_label].reset()
+
+                if play_requested:
+
+                    if selected_method == "EXCEPTION":
+
+                        guitar.play_exception(audio)
+
+                        print("GUITAR EXCEPTION PLAY!")
+
+                    elif (
+                        selected_chord is not None
+                        and selected_method is not None
+                    ):
+
+                        guitar.play_sound(
+                            audio,
+                            selected_chord,
+                            selected_method
+                        )
+
+                        print(
+                            f"GUITAR PLAY: "
+                            f"{selected_chord} + {selected_method}"
+                        )
+
+                frame = guitar.draw_hit_effect(frame)   
+            
         # =====================================
         # 6. CLAHE 상태 표시
         # =====================================
