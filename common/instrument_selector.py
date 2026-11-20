@@ -7,8 +7,7 @@ class InstrumentSelector:
             1: "DRUM",
             2: "PIANO",
             3: "GUITAR",
-            4: "BASS",
-            5: "COMMON DEMO"
+            4: "BASS"
         }
 
         self.candidate = None
@@ -16,7 +15,7 @@ class InstrumentSelector:
         self.hold_seconds = 1.0
 
     def update(self, finger_count):
-        # 1~5개가 아니면 선택 초기화
+        # 1~4개가 아니면 선택 초기화
         if finger_count not in self.instruments:
             self.reset()
             return None
